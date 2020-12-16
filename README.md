@@ -10,7 +10,8 @@ This is the CUDA implementation of ray-tracing algorithm. The project was initia
 
 ```
 cd build
-cmake ../
+cmake -D CUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda-9.2/ ..
+ ̶c̶m̶a̶k̶e̶ ̶.̶.̶/̶
 make
 ./Raytracing
 ```
