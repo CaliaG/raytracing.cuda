@@ -1,7 +1,7 @@
 #ifndef TRIANGLE_H
 #define TRIANGLE_H
 
-#include "hitable/hitable.h"
+#include "../hitable/hitable.h"
 
 
 // Triangle primitive

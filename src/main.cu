@@ -8,11 +8,15 @@
 #include "mesh/obj_loader.h"
 #include "material/material.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "../libs/stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "../libs/stb_image_write.h"
+
 #define RESOLUTION 1
 #define SAMPLES 100
 
 #define checkCudaErrors(val) check_cuda((val), #val, __FILE__, __LINE__)
-
 
 void check_cuda(cudaError_t result, 
                 char const *const func, 
@@ -26,6 +30,7 @@ void check_cuda(cudaError_t result,
     }
 }
 
+void save_to_jpg(vec3* frameBuffer_u, int nx, int ny);
 
 __device__ vec3 shade(const Ray& r, 
                       Hitable **world, 
@@ -104,7 +109,7 @@ __global__ void build_mesh(Hitable** mesh,
                             int nx, int ny, int cnt){
     if(threadIdx.x == 0 && blockIdx.x == 0) {
 
-        draw_one_mesh(mesh, triangles, points, idxVertex, np, nt, state);
+        draw_one_mesh(mesh, triangles, points, idxVertex, np, nt, state, true);
         // bunny_inside_cornell_box(mesh, triangles, points, idxVertex, np, nt, state);
 
         vec3 lookfrom(0, 0, 10);
@@ -183,8 +188,6 @@ int main() {
     std::time_t tic = std::time(NULL);
     std::cout << "Start running at: " << std::asctime(std::localtime(&tic)) << std::endl;
 
-    std::ofstream imgWrite("images/image.ppm");
-
     int nx = 1024 * RESOLUTION;
     int ny = 512  * RESOLUTION;
     int tx = 16;
@@ -218,26 +221,36 @@ int main() {
     vec3* points;
     vec3* idxVertex;
 
+    std::cout << "-- pre-allocation" << std::endl;
     // NOTE: must pre-allocate before initialize the elements
-    checkCudaErrors(cudaMallocManaged((void**)& points,    2600 * sizeof(vec3)));
-    checkCudaErrors(cudaMallocManaged((void**)& idxVertex, 5000 * sizeof(vec3)));
+    // -- SMALL BUNNY
+    // checkCudaErrors(cudaMallocManaged((void**)& points,    2600 * sizeof(vec3)));
+    // checkCudaErrors(cudaMallocManaged((void**)& idxVertex, 5000 * sizeof(vec3)));
+    // -- SMALL BOX
+    checkCudaErrors(cudaMallocManaged((void**)& points,    24 * sizeof(vec3)));
+    checkCudaErrors(cudaMallocManaged((void**)& idxVertex, 12 * sizeof(vec3)));
+    // -- DRAGON
+    // checkCudaErrors(cudaMallocManaged((void**)& points,    435500 * sizeof(vec3)));
+    // checkCudaErrors(cudaMallocManaged((void**)& idxVertex, 871200 * sizeof(vec3)));
+    // -- BUNNY
+    // checkCudaErrors(cudaMallocManaged((void**)& points,    34900 * sizeof(vec3)));
+    // checkCudaErrors(cudaMallocManaged((void**)& idxVertex, 70000 * sizeof(vec3)));
 
     int nPoints, nTriangles;
-    parseObjByName("./shapes/small_bunny.obj", points, idxVertex, nPoints, nTriangles);
+    parseObjByName("./shapes/cbox_smallbox.obj", points, idxVertex, nPoints, nTriangles);
 
     std::cout << "# of points: " << nPoints << std::endl;
     std::cout << "# of triangles: " << nTriangles << std::endl;
 
     // scale
     for(int i = 0; i < nPoints; i++) { points[i] *= 30.0; }
-    for(int i = 0; i < nPoints; i++) { std::cout << points[i] << std::endl; }
+    //for(int i = 0; i < nPoints; i++) { std::cout << points[i] << std::endl; }
 
     Hitable** triangles;
     checkCudaErrors(cudaMallocManaged((void**)& triangles, nTriangles * sizeof(Hitable*)));
     // --------------------------- ! allocate the mesh ---------------------------------------
 
-    build_mesh <<<1, 1>>>(world, camera, triangles, points, 
-                          idxVertex, nPoints, nTriangles, curand_state, nx, ny, obj_cnt);
+    build_mesh <<<1, 1>>>(world, camera, triangles, points, idxVertex, nPoints, nTriangles, curand_state, nx, ny, obj_cnt);
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
 
@@ -245,6 +258,9 @@ int main() {
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
 
+    save_to_jpg(colorBuffer, nx, ny);
+
+    std::ofstream imgWrite("images/image.ppm");
     imgWrite << "P3\n" << nx << " " << ny << "\n255\n";
     for(int i = ny - 1; i >= 0; i--) {
         for(int j = 0; j < nx; j++) {
@@ -270,6 +286,25 @@ int main() {
 
     std::time_t toc = std::time(NULL);
     std::cout << "Finish running at: " << std::asctime(std::localtime(&toc)) << std::endl;
-    std::cout << "Time consuming: " << toc - tic << "s" << std::endl;
+    std::cout << "Time consuming: " << toc - tic << " seconds" << std::endl;
 }
 
+void save_to_jpg(vec3* frameBuffer_u, int nx, int ny) {
+    uint8_t* imgBuff = (uint8_t*)std::malloc(nx * ny * 3 * sizeof(uint8_t));
+    for (int j = ny - 1; j >= 0; --j) {
+        for (int i = 0; i < nx; ++i) {
+            size_t index = j*nx + i;
+            // stbi generates a Y flipped image
+            size_t rev_index = (ny - j - 1) * nx + i;
+            float r = frameBuffer_u[index].r();
+            float g = frameBuffer_u[index].g();
+            float b = frameBuffer_u[index].b();
+            imgBuff[rev_index * 3 + 0] = int(255.999f * r) & 255;
+            imgBuff[rev_index * 3 + 1] = int(255.999f * g) & 255;
+            imgBuff[rev_index * 3 + 2] = int(255.999f * b) & 255;
+        }
+    }
+    //stbi_write_png("out.png", WIDTH, HEIGHT, 3, imgBuff, WIDTH * 3);
+    stbi_write_jpg("images/image.jpg", nx, ny, 3, imgBuff, 100);
+    std::free(imgBuff);
+}

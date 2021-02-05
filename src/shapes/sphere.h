@@ -1,7 +1,7 @@
 #ifndef SPHERE_H
 #define SPHERE_H
 
-#include "hitable/hitable.h"
+#include "../hitable/hitable.h"
 
 
 // Sphere primitive

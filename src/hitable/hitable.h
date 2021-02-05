@@ -1,8 +1,8 @@
 #ifndef HITABLE_H
 #define HITABLE_H
 
-#include "core/ray.h"
-#include "core/aabb.h"
+#include "../core/ray.h"
+#include "../core/aabb.h"
 
 
 class Material;

@@ -1,9 +1,9 @@
 #ifndef MESH_H
 #define MESH_H
 
-#include "hitable/hitable.h"
-#include "shapes/triangle.h"
-#include "hitable/hitable_list.h"
+#include "../hitable/hitable.h"
+#include "../shapes/triangle.h"
+#include "../hitable/hitable_list.h"
 
 
 // __device__ float min(const float a, const float b) {

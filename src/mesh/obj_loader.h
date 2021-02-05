@@ -8,7 +8,7 @@
 #include <fstream>
 
 #include <stdlib.h>
-#include "core/vec3.h"
+#include "../core/vec3.h"
 
 
 vec3 computeMean(vec3* points, int np);

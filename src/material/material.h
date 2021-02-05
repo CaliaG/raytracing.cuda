@@ -1,8 +1,8 @@
 #ifndef MATERIAL_H
 #define MATERIAL_H
 
-#include "hitable/hitable.h"
-#include "texture.h"
+#include "../hitable/hitable.h"
+#include "../texture.h"
 
 
 __device__ vec3 reflect(const vec3& v, const vec3& n){

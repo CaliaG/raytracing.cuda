@@ -2,7 +2,7 @@
 #define AABB_H
 
 #include "ray.h"
-#include "float.h"
+#include <float.h>
 
 // avoid too much sanity check
 __device__ inline float ffmin(float a, float b) {return a < b ? a : b;}
